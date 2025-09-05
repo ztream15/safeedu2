@@ -264,7 +264,6 @@ function ReportForm({ showMessage, supabase, user }) {
               checked={isAnonymous}
               onChange={() => handleAnonymityChange(true)}
               className="form-radio h-5 w-5 text-blue-600 rounded-full focus:ring-blue-500"
-              disabled={!!user} // ปิดใช้งานหากผู้ใช้ล็อกอินอยู่ (บังคับไม่เปิดเผยตัวตนสำหรับผู้ที่ไม่ได้ล็อกอิน)
             />
             <span className="ml-2 text-gray-700">ไม่เปิดเผยตัวตน</span>
           </label>
