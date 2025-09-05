@@ -25,6 +25,48 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // --- yarn add @supabase/supabase-js ---
 // --- หลังจากการติดตั้ง โปรดรีสตาร์ท development server ของคุณ (เช่น npm start หรือ yarn start) ---
 
+// --- [ส่วนที่เพิ่มใหม่] คอมโพเนนต์สำหรับแสดง Pop-up นโยบายความเป็นส่วนตัว ---
+const PrivacyPolicyModal = ({ onClose }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white">
+          <h2 className="text-2xl font-bold text-blue-800">นโยบายความเป็นส่วนตัว (Privacy Policy)</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-6 space-y-4 text-gray-700 overflow-y-auto">
+          <p className="text-sm text-gray-500">ปรับปรุงล่าสุด: 5 กันยายน 2568</p>
+          <p>SafeEdu ("เรา") มุ่งมั่นที่จะปกป้องความเป็นส่วนตัวของผู้ใช้งาน ("คุณ") ทุกคน นโยบายนี้อธิบายถึงวิธีการที่เรารวบรวม, ใช้, และปกป้องข้อมูลของคุณ</p>
+          
+          <ol className="list-decimal list-inside space-y-3">
+            <li><strong>การรวบรวมข้อมูล:</strong> เรารวบรวมข้อมูลที่คุณให้โดยตรง เช่น ข้อมูลโปรไฟล์ (ชื่อ, อีเมล, ระดับการศึกษา) และข้อมูลในเรื่องร้องเรียน (รายละเอียด, วันที่, สถานที่, ไฟล์แนบ)</li>
+            <li><strong>วัตถุประสงค์การใช้ข้อมูล:</strong> ข้อมูลของคุณจะถูกใช้เพื่อการตรวจสอบ, ติดตาม, และแก้ไขปัญหาตามเรื่องที่ร้องเรียนเท่านั้น รวมถึงการติดต่อกลับหากจำเป็น</li>
+            <li><strong>การไม่เปิดเผยตัวตน:</strong> หากคุณเลือก "ไม่เปิดเผยตัวตน" ข้อมูลส่วนตัวของคุณ (ชื่อ, อีเมล, เบอร์โทร) จะไม่ถูกบันทึกในรายงาน แต่ ID ผู้ใช้ของคุณ (หากล็อกอิน) จะยังคงถูกบันทึกไว้เพื่อการแสดงประวัติส่วนตัว โดยที่ผู้ดูแลจะไม่เห็นข้อมูลที่เชื่อมโยงถึงตัวตนของคุณจากหน้ารายงาน</li>
+            <li><strong>การเปิดเผยข้อมูลแก่บุคคลที่สาม:</strong> เราจะไม่เปิดเผยข้อมูลของคุณแก่บุคคลภายนอก ยกเว้นกรณีที่จำเป็นต่อกระบวนการตรวจสอบ เช่น การส่งต่อข้อมูลให้แก่ฝ่ายปกครอง, อาจารย์ที่ปรึกษา, หรือผู้มีอำนาจตัดสินใจภายในสถานศึกษาเท่านั้น</li>
+            <li><strong>การจัดเก็บและความปลอดภัย:</strong> ข้อมูลของคุณถูกจัดเก็บในฐานข้อมูลที่มีการป้องกันอย่างแน่นหนา และมีการเข้ารหัสข้อมูลที่สำคัญเพื่อความปลอดภัยสูงสุด</li>
+            <li><strong>ระยะเวลาการเก็บข้อมูล:</strong> เราจะเก็บข้อมูลเรื่องร้องเรียนของคุณไว้ตราบเท่าที่จำเป็นต่อการดำเนินงานและติดตามผล หรือตามที่กฎหมายกำหนด</li>
+            <li><strong>สิทธิ์ของผู้ใช้:</strong> คุณมีสิทธิ์ในการเข้าถึงและดูประวัติการร้องเรียนของคุณได้เสมอผ่านหน้า "ติดตามเรื่องร้องเรียน"</li>
+            <li><strong>การใช้คุกกี้ (Cookies):</strong> เว็บไซต์ของเราใช้คุกกี้ที่จำเป็นในการจัดการสถานะการเข้าสู่ระบบ (Session) เท่านั้น ไม่มีการใช้คุกกี้เพื่อการติดตามหรือโฆษณา</li>
+            <li><strong>ความปลอดภัยของไฟล์แนบ:</strong> ไฟล์ที่คุณแนบมาจะถูกจัดเก็บอย่างปลอดภัยและเข้าถึงได้เฉพาะผู้ดูแลระบบที่เกี่ยวข้องกับเรื่องร้องเรียนของคุณเท่านั้น</li>
+            <li><strong>การเปลี่ยนแปลงนโยบาย:</strong> หากมีการเปลี่ยนแปลงนโยบายความเป็นส่วนตัวอย่างมีนัยสำคัญ เราจะแจ้งให้คุณทราบผ่านทางหน้าเว็บไซต์</li>
+          </ol>
+        </div>
+        <div className="p-4 border-t text-right bg-gray-50 rounded-b-2xl sticky bottom-0">
+            <button 
+              onClick={onClose} 
+              className="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              ตกลง
+            </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // --- คอมโพเนนต์ฟอร์มแจ้งเหตุ (Report Form Component) ---
 function ReportForm({ showMessage, supabase, user }) {
@@ -42,7 +84,8 @@ function ReportForm({ showMessage, supabase, user }) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false); // สถานะการส่งข้อมูล
   const [userProfile, setUserProfile] = useState(null); // สถานะข้อมูลโปรไฟล์ผู้ใช้
-
+  // **[แก้ไข]** ประกาศ State สำหรับควบคุม Pop-up ที่นี่
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   // Effect hook สำหรับดึงข้อมูลโปรไฟล์ผู้ใช้เมื่อ user หรือ supabase client เปลี่ยนแปลง
   useEffect(() => {
     const fetchProfile = async () => {
@@ -204,9 +247,12 @@ function ReportForm({ showMessage, supabase, user }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <h2 className="text-3xl font-bold text-blue-700 mb-6 text-center">แจ้งเหตุ/รายงานพฤติกรรม</h2>
+    <>
+      {/* **[แก้ไข]** แสดง Pop-up เมื่อ showPrivacyModal เป็น true */}
+      {showPrivacyModal && <PrivacyPolicyModal onClose={() => setShowPrivacyModal(false)} />}
 
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <h2 className="text-3xl font-bold text-blue-700 mb-6 text-center">แจ้งเหตุ/รายงานพฤติกรรม</h2>
       <div className="bg-blue-50 p-5 rounded-2xl shadow-inner">
         <label className="block text-xl font-semibold text-blue-800 mb-3">ข้อมูลผู้แจ้ง:</label>
         <div className="flex flex-wrap gap-4">
@@ -412,25 +458,23 @@ function ReportForm({ showMessage, supabase, user }) {
       </div>
 
       <div className="flex items-start">
-        <div className="flex items-center h-5">
-          <input
-            id="privacy_consent"
-            name="privacy_consent"
-            type="checkbox"
-            required
-            className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
-          />
+          <div className="flex items-center h-5">
+            <input id="privacy_consent" name="privacy_consent" type="checkbox" required className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded" />
+          </div>
+          <div className="ml-3 text-sm">
+            <label htmlFor="privacy_consent" className="font-medium text-gray-700">
+              ฉันได้อ่านและยอมรับ
+              <button 
+                type="button" 
+                className="text-blue-600 hover:text-blue-800 ml-1 underline"
+                onClick={() => setShowPrivacyModal(true)}
+              >
+                นโยบายความเป็นส่วนตัว
+              </button>
+              ของ SafeEdu แล้ว <span className="text-red-500">*</span>
+            </label>
+          </div>
         </div>
-        <div className="ml-3 text-sm">
-          <label htmlFor="privacy_consent" className="font-medium text-gray-700">
-            ฉันได้อ่านและยอมรับ
-            <button type="button" className="text-blue-600 hover:text-blue-800 ml-1 underline">
-              นโยบายความเป็นส่วนตัว
-            </button>
-            ของ SafeEdu แล้ว <span className="text-red-500">*</span>
-          </label>
-        </div>
-      </div>
 
       <button
         type="submit"
@@ -455,9 +499,11 @@ function ReportForm({ showMessage, supabase, user }) {
         ข้อมูลของคุณจะถูกเก็บเป็นความลับสูงสุด และจะถูกใช้เพื่อวัตถุประสงค์ในการแก้ไขปัญหาที่แจ้งเท่านั้น เราตระหนักถึงความปลอดภัยและความเป็นส่วนตัวของผู้ใช้งานเป็นสำคัญ
       </p>
     </form>
+    </>
   );
 }
 
+// แสดงประวัติการแจ้งเหตุ
 function TrackStatus({ showMessage, supabase, user }) {
   const [searchId, setSearchId] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
