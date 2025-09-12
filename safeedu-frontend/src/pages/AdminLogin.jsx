@@ -8,22 +8,15 @@ export default function AdminLogin({ supabase, setAdmin }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ตรวจสอบว่าถ้ามี admin session อยู่แล้ว ให้ redirect ไป dashboard เลย
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // เพิ่มการตรวจสอบว่าเป็น admin จริงหรือไม่
-        const { data: profile, error } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', session.user.id)
           .single();
-
-        if (error) {
-          console.error("Error fetching profile:", error.message);
-          return;
-        }
         
         if (profile && profile.role === 'admin') {
           setAdmin(session.user);
@@ -40,58 +33,41 @@ export default function AdminLogin({ supabase, setAdmin }) {
     setMessage("");
 
     try {
-      // 1. พยายามล็อกอิน
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: loginData, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) {
-        setMessage(error.message);
-        throw error;
-      }
+      if (error) throw error;
       
-      // 2. การล็อกอินสำเร็จแล้ว! ตอนนี้ตรวจสอบ role
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user) {
+      if (loginData.user) {
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('role')
-          .eq('id', user.id)
+          .eq('id', loginData.user.id)
           .single();
 
-        if (profileError) {
-          setMessage("เกิดข้อผิดพลาดในการตรวจสอบสิทธิ์: " + profileError.message);
-          await supabase.auth.signOut(); // ล็อกเอาต์ทันที
-          throw profileError;
-        }
+        if (profileError) throw profileError;
 
         if (profile && profile.role === 'admin') {
-          // ถ้าเป็น admin ให้ไปหน้า admin-dashboard
-          setAdmin(user);
+          setAdmin(loginData.user);
           navigate("/admin-dashboard");
         } else {
-          // ถ้าไม่ใช่ admin ให้แสดงข้อความแจ้งเตือนและออกจากระบบทันที
           setMessage("สิทธิ์ไม่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ");
           await supabase.auth.signOut();
         }
       }
-
     } catch (err) {
-      console.error(err);
-      if (!message) {
-        setMessage("ล็อกอินไม่สำเร็จ: " + err.message);
-      }
+      setMessage("ล็อกอินไม่สำเร็จ: " + (err.message || "กรุณาตรวจสอบข้อมูลอีกครั้ง"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-blue-50 p-4">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
       <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm">
-        <h2 className="text-3xl font-bold mb-6 text-center text-blue-800">เข้าสู่ระบบแอดมิน</h2>
+        <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">Admin Login</h2>
         <form onSubmit={handleLogin} className="space-y-6">
           {message && (
             <p className={`p-3 rounded-lg text-center font-medium ${message.includes('สำเร็จ') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -106,7 +82,7 @@ export default function AdminLogin({ supabase, setAdmin }) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg"
               required
             />
           </div>
@@ -118,7 +94,7 @@ export default function AdminLogin({ supabase, setAdmin }) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg"
               required
             />
           </div>
@@ -126,13 +102,14 @@ export default function AdminLogin({ supabase, setAdmin }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:bg-gray-400"
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
           >
             {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
           </button>
         </form>
         <div className="mt-6 text-center text-sm">
-          <Link to="/login" className="text-blue-600 hover:underline">
+          {/* **[แก้ไข]** เปลี่ยน to="/login" เป็น to="/" */}
+          <Link to="/" className="text-blue-600 hover:underline">
             กลับไปหน้าเข้าสู่ระบบสำหรับผู้ใช้ทั่วไป
           </Link>
         </div>
