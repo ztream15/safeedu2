@@ -459,104 +459,106 @@ export default function AdminDashboard({ supabase, showMessage, setAdmin }) {
   }, []);
 
   /* ---------- build overview ---------- */
-  const buildOverview = (reportsList, profilesList) => {
+  const buildOverview = React.useCallback((reportsList, profilesList) => {
     const perTypeMap = {};
     const perStatusMap = {};
     const perEduMap = {};
     let total = 0;
 
-    (reportsList || []).forEach((r) => {
-      total++;
-      perTypeMap[r.issue_type] = (perTypeMap[r.issue_type] || 0) + 1;
-      perStatusMap[r.status] = (perStatusMap[r.status] || 0) + 1;
+  (reportsList || []).forEach((r) => {
+    total++;
+    perTypeMap[r.issue_type] = (perTypeMap[r.issue_type] || 0) + 1;
+    perStatusMap[r.status] = (perStatusMap[r.status] || 0) + 1;
 
-      let edu = "ไม่ระบุ";
-      if (r.reporter_id) {
-        const p = (profilesList || []).find((x) => x.id === r.reporter_id);
-        if (p && p.education_level) edu = p.education_level;
-      }
-      perEduMap[edu] = (perEduMap[edu] || 0) + 1;
-    });
+    let edu = "ไม่ระบุ";
+    if (r.reporter_id) {
+      const p = (profilesList || []).find((x) => x.id === r.reporter_id);
+      if (p && p.education_level) edu = p.education_level;
+    }
+    perEduMap[edu] = (perEduMap[edu] || 0) + 1;
+  });
 
-    const perType = Object.keys(perTypeMap).map((k) => ({ name: k || "ไม่ระบุ", value: perTypeMap[k] }));
-    setOverviewData({ perType, perStatus: perStatusMap, perEducation: perEduMap, total });
-  };
+  const perType = Object.keys(perTypeMap).map((k) => ({ name: k || "ไม่ระบุ", value: perTypeMap[k] }));
+  setOverviewData({ perType, perStatus: perStatusMap, perEducation: perEduMap, total });
+  }, []);
 
   /* ---------- compute filteredReports ---------- */
-  useEffect(() => {
-    let list = [...reports];
+useEffect(() => {
+  let list = [...reports];
 
-    // date filter
-    if (dateMode !== "all") {
-      const now = new Date();
-      let start = null;
-      let end = null;
-      if (dateMode === "today") {
-        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        end = new Date(start);
-        end.setDate(end.getDate() + 1);
-      } else if (dateMode === "week") {
-        const day = now.getDay();
-        start = new Date(now);
-        start.setDate(now.getDate() - day);
-        start.setHours(0, 0, 0, 0);
-        end = new Date(start);
-        end.setDate(end.getDate() + 7);
-      } else if (dateMode === "month") {
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      } else if (dateMode === "year") {
-        start = new Date(now.getFullYear(), 0, 1);
-        end = new Date(now.getFullYear() + 1, 0, 1);
-      } else if (dateMode === "range" && rangeStart && rangeEnd) {
-        start = new Date(rangeStart);
-        end = new Date(rangeEnd);
-        end.setDate(end.getDate() + 1);
-      }
-      if (start && end) {
-        list = list.filter((r) => {
-          if (!r.created_at) return false;
-          const created = new Date(r.created_at);
-          return created >= start && created < end;
-        });
-      }
+  // date filter
+  if (dateMode !== "all") {
+    const now = new Date();
+    let start = null;
+    let end = null;
+    if (dateMode === "today") {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      end = new Date(start);
+      end.setDate(end.getDate() + 1);
+    } else if (dateMode === "week") {
+      const day = now.getDay();
+      start = new Date(now);
+      start.setDate(now.getDate() - day);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(start);
+      end.setDate(end.getDate() + 7);
+    } else if (dateMode === "month") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    } else if (dateMode === "year") {
+      start = new Date(now.getFullYear(), 0, 1);
+      end = new Date(now.getFullYear() + 1, 0, 1);
+    } else if (dateMode === "range" && rangeStart && rangeEnd) {
+      start = new Date(rangeStart);
+      end = new Date(rangeEnd);
+      end.setDate(end.getDate() + 1);
     }
-
-    // type filter
-    if (typeFilter !== "all") {
-      list = list.filter((r) => r.issue_type === typeFilter);
-    }
-
-    // status filter
-    if (statusFilter !== "all") {
-      list = list.filter((r) => r.status === statusFilter);
-    }
-
-    // education filter
-    if (eduFilter !== "all") {
+    if (start && end) {
       list = list.filter((r) => {
-        if (!r.reporter_id) return eduFilter === "ไม่ระบุ";
-        const p = profiles.find((x) => x.id === r.reporter_id);
-        const edu = p?.education_level || "ไม่ระบุ";
-        return edu === eduFilter;
+        if (!r.created_at) return false;
+        const created = new Date(r.created_at);
+        return created >= start && created < end;
       });
     }
+  }
 
-    // search
-    if (searchQuery && searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      list = list.filter((r) => {
-        return (
-          r.id?.toString().includes(q) ||
-          (r.issue_type || "").toLowerCase().includes(q) ||
-          (r.incident_details || "").toLowerCase().includes(q) ||
-          (r.reporter_name || "").toLowerCase().includes(q)
-        );
-      });
-    }
+  // type filter
+  if (typeFilter !== "all") {
+    list = list.filter((r) => r.issue_type === typeFilter);
+  }
 
-    setFilteredReports(list);
-  }, [reports, profiles, searchQuery, typeFilter, statusFilter, eduFilter, dateMode, rangeStart, rangeEnd]);
+  // status filter
+  if (statusFilter !== "all") {
+    list = list.filter((r) => r.status === statusFilter);
+  }
+
+  // education filter
+  if (eduFilter !== "all") {
+    list = list.filter((r) => {
+      if (!r.reporter_id) return eduFilter === "ไม่ระบุ";
+      const p = profiles.find((x) => x.id === r.reporter_id);
+      const edu = p?.education_level || "ไม่ระบุ";
+      return edu === eduFilter;
+    });
+  }
+
+  // search
+  if (searchQuery && searchQuery.trim()) {
+    const q = searchQuery.trim().toLowerCase();
+    list = list.filter((r) => {
+      return (
+        r.id?.toString().includes(q) ||
+        (r.issue_type || "").toLowerCase().includes(q) ||
+        (r.incident_details || "").toLowerCase().includes(q) ||
+        (r.reporter_name || "").toLowerCase().includes(q)
+      );
+    });
+  }
+
+  setFilteredReports(list);
+  buildOverview(list, profiles); // <-- นี่คือบรรทัดที่เพิ่มเข้ามาเพื่อสั่งให้คำนวณใหม่
+
+}, [reports, profiles, searchQuery, typeFilter, statusFilter, eduFilter, dateMode, rangeStart, rangeEnd, buildOverview]); // <-- และเพิ่ม buildOverview ตรงนี้
 
   /* ---------- Reports actions: upload files, save edit, delete, edit users ---------- */
   const handleUploadFiles = async (reportId, files) => {
@@ -835,14 +837,25 @@ export default function AdminDashboard({ supabase, showMessage, setAdmin }) {
                 <div className="space-y-3">
                   <div>
                     <label className="text-sm text-gray-600">ประเภทปัญหา</label>
+                    {/* แก้ไข: เพิ่ม .sort() ที่นี่เพื่อให้ 'อื่นๆ' อยู่ท้าย */}
                     <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-full border px-3 py-2 rounded mt-1 bg-white">
                       <option value="all">ทั้งหมด</option>
-                      {Array.from(new Set(reports.map((r) => r.issue_type))).filter(Boolean).map((t) => <option key={t} value={t}>{t}</option>)}
+                      {Array.from(new Set(reports.map((r) => r.issue_type)))
+                        .filter(Boolean)
+                        .sort((a, b) => {
+                          if (a === "อื่นๆ") return 1;
+                          if (b === "อื่นๆ") return -1;
+                          return a.localeCompare(b);
+                        })
+                        .map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
                     </select>
                   </div>
 
                   <div>
                     <label className="text-sm text-gray-600">ชั้นปี</label>
+                    {/* แก้ไข: นำ .sort() ออก และแก้ value/onChange ให้ถูกต้อง */}
                     <select value={eduFilter} onChange={(e) => setEduFilter(e.target.value)} className="w-full border px-3 py-2 rounded mt-1 bg-white">
                       <option value="all">ทั้งหมด</option>
                       {EDUCATION_LEVELS_OVERVIEW.map((e) => <option key={e} value={e}>{e}</option>)}
@@ -1002,7 +1015,16 @@ export default function AdminDashboard({ supabase, showMessage, setAdmin }) {
                   <label className="text-sm text-gray-600">ประเภท</label>
                   <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-full border px-3 py-2 rounded bg-white">
                     <option value="all">ทั้งหมด</option>
-                    {Array.from(new Set(reports.map((r) => r.issue_type))).filter(Boolean).map((t) => <option key={t} value={t}>{t}</option>)}
+                    {Array.from(new Set(reports.map((r) => r.issue_type)))
+                      .filter(Boolean)
+                      .sort((a, b) => {
+                        if (a === "อื่นๆ") return 1; // "อื่นๆ" ควรไปอยู่ท้ายสุด
+                        if (b === "อื่นๆ") return -1; // "อื่นๆ" ควรไปอยู่ท้ายสุด
+                        return a.localeCompare(b); // ที่เหลือให้เรียงตามตัวอักษรไทย
+                      })
+                      .map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
                   </select>
                 </div>
 
@@ -1017,16 +1039,18 @@ export default function AdminDashboard({ supabase, showMessage, setAdmin }) {
             </div>
 
             <div className="bg-white p-4 rounded-2xl shadow-md overflow-auto">
-              <table className="min-w-full table-auto">
+              {/* --- 1. แก้ไข table-auto เป็น table-fixed --- */}
+              <table className="min-w-full table-fixed">
                 <thead>
                   <tr className="text-left bg-gray-50">
-                    <th className="p-2 w-24">ID</th>
-                    <th className="p-2 w-48">วันที่แจ้ง</th>
-                    <th className="p-2">ประเภท</th>
-                    <th className="p-2">สถานที่</th>
-                    <th className="p-2">สถานะ</th>
-                    <th className="p-2 w-64">ผู้แจ้ง</th>
-                    <th className="p-2 w-48">จัดการ</th>
+                    {/* แก้ไขสัดส่วนความกว้างคอลัมน์ทั้งหมด */}
+                    <th className="p-2" style={{ width: "5%" }}>ID</th>
+                    <th className="p-2" style={{ width: "12%" }}>วันที่แจ้ง</th>
+                    <th className="p-2" style={{ width: "17%" }}>ประเภท</th>
+                    <th className="p-2" style={{ width: "18%" }}>สถานที่</th>
+                    <th className="p-2" style={{ width: "15%" }}>สถานะ</th>
+                    <th className="p-2" style={{ width: "15%" }}>ผู้แจ้ง</th>
+                    <th className="p-2 text-center" style={{ width: "18%" }}>จัดการ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1036,25 +1060,27 @@ export default function AdminDashboard({ supabase, showMessage, setAdmin }) {
                     return (
                       <React.Fragment key={r.id}>
                         <tr className="border-t hover:bg-gray-50">
-                          <td className="p-2">{r.id}</td>
-                          <td className="p-2">{fmtDate(r.created_at)}</td>
-                          <td className="p-2">{r.issue_type}</td>
-                          <td className="p-2">{r.incident_location}</td>
+                          {/* แก้ไข: เพิ่ม text-sm เพื่อลดขนาดตัวอักษร */}
+                          <td className="p-2 text-sm">{r.id}</td>
+                          <td className="p-2 text-sm">{fmtDate(r.created_at)}</td>
+                          <td className="p-2 text-sm truncate">{r.issue_type}</td>
+                          <td className="p-2 text-sm truncate">{r.incident_location}</td>
+                          {/* ส่วนนี้ถูกต้องแล้ว ไม่ต้องแก้ */}
                           <td className="p-2">
                             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${badge.className}`}>
                               <span>{badge.icon}</span>
                               <span>{r.status}</span>
                             </span>
                           </td>
-                          <td className="p-2">
+                          <td className="p-2 truncate">
                             <div className="text-sm">{r.reporter_name || "ไม่ระบุ"}</div>
                             <div className="text-xs text-gray-500">{r.reporter_phone || ""}</div>
                           </td>
-                          <td className="p-2">
-                            <div className="flex gap-2">
-                              <button onClick={() => openEditReport(r)} className="bg-blue-500 text-white px-3 py-1 rounded">แก้ไข</button>
-                              <button onClick={() => { setDeleteTarget({ type: "report", id: r.id }); setShowDeleteModal(true); }} className="bg-red-500 text-white px-3 py-1 rounded">ลบ</button>
-                              <button onClick={() => setExpandedReportId(isExpanded ? null : r.id)} className="bg-gray-200 px-3 py-1 rounded">
+                          <td className="p-2 text-center">
+                            <div className="flex items-center justify-center space-x-1">
+                              <button onClick={() => openEditReport(r)} className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 text-sm">แก้ไข</button>
+                              <button onClick={() => { setDeleteTarget({ type: "report", id: r.id }); setShowDeleteModal(true); }} className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-sm">ลบ</button>
+                              <button onClick={() => setExpandedReportId(isExpanded ? null : r.id)} className="bg-gray-200 text-gray-800 px-2 py-1 rounded hover:bg-gray-300 text-sm whitespace-nowrap">
                                 {isExpanded ? "ย่อ" : "รายละเอียด"}
                               </button>
                             </div>
@@ -1067,12 +1093,10 @@ export default function AdminDashboard({ supabase, showMessage, setAdmin }) {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                   <h4 className="font-semibold">รายละเอียดเหตุการณ์</h4>
-                                  <p className="mt-2 whitespace-pre-line">{r.incident_details || "-"}</p>
-
+                                  <p className="mt-2 whitespace-pre-wrap break-words">{r.incident_details || "-"}</p>
                                   <div className="mt-3">
                                     <strong>วันที่เกิดเหตุ:</strong> {r.incident_date || "-"} {r.incident_time || ""}
                                   </div>
-
                                   <div className="mt-2">
                                     <strong>ไฟล์แนบ (จากผู้แจ้ง):</strong>
                                     <ul className="mt-2">
@@ -1082,26 +1106,23 @@ export default function AdminDashboard({ supabase, showMessage, setAdmin }) {
                                     </ul>
                                   </div>
                                 </div>
-
                                 <div>
                                   <h4 className="font-semibold">ข้อมูลการรายงาน</h4>
                                   <div className="mt-2"><strong>ชื่อผู้แจ้ง:</strong> {r.reporter_name || "ไม่ระบุ"}</div>
                                   <div className="mt-1"><strong>โทร:</strong> {r.reporter_phone || "-"}</div>
                                   <div className="mt-1"><strong>สถานะ:</strong> <span className={`ml-2 inline-flex items-center gap-2 px-3 py-1 rounded-full ${badge.className}`}>{badge.icon} {r.status}</span></div>
-
                                   <div className="mt-3">
                                     <strong>หมายเหตุจากแอดมิน:</strong>
                                     <ul className="mt-2">
                                       {(r.admin_notes || []).length === 0 && <li className="text-gray-500">ไม่มีหมายเหตุ</li>}
                                       {(r.admin_notes || []).map((n, i) => (
                                         <li key={i} className="mb-2">
-                                          <div className="text-sm">{n.text}</div>
+                                          <div className="text-sm break-words">{n.text}</div>
                                           <div className="text-xs text-gray-400">{n.created_at ? fmtDate(n.created_at) : ""}</div>
                                         </li>
                                       ))}
                                     </ul>
                                   </div>
-
                                   <div className="mt-3">
                                     <strong>ไฟล์แนวทาง/แนวปฏิบัติ:</strong>
                                     <ul className="mt-2">
