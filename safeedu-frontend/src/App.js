@@ -832,7 +832,7 @@ function LoginForm({ showMessage, supabase, setActiveTab }) {
 }
 
 // --- คอมโพเนนต์ฟอร์มลงทะเบียน (Register Form Component) ---
-function RegisterForm({ showMessage, supabase, setActiveTab }) {
+function RegisterForm({ showMessage, supabase, setActiveTab, setPersistentMessage }) {
   const [email, setEmail] = useState(''); // สถานะอีเมล
   const [password, setPassword] = useState(''); // สถานะรหัสผ่าน
   const [confirmPassword, setConfirmPassword] = useState(''); // สถานะยืนยันรหัสผ่าน
@@ -876,6 +876,29 @@ function RegisterForm({ showMessage, supabase, setActiveTab }) {
     e.preventDefault();
     setIsRegistering(true);
     showMessage('กำลังลงทะเบียน...', 'info');
+
+    // --- ✨ เพิ่มโค้ดส่วนนี้เข้าไป ✨ ---
+  if (!prefix || !fullName || !phoneNumber || !educationLevel || !department || !studentId) {
+    showMessage('กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบทุกช่อง', 'error');
+    setIsRegistering(false);
+    return;
+  }
+
+    // --- โค้ดเดิมที่เช็คความยาว ---
+    if (password.length < 8) {
+      showMessage('รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร', 'error');
+      setIsRegistering(false);
+      return;
+    }
+
+    // --- ✨ เพิ่มโค้ดส่วนนี้เข้าไปต่อท้าย ✨ ---
+    const letterCount = (password.match(/[a-zA-Z]/g) || []).length;
+    if (letterCount < 2) {
+      showMessage('รหัสผ่านต้องมีตัวอักษรอย่างน้อย 2 ตัว', 'error');
+      setIsRegistering(false);
+      return;
+    }
+    // --- สิ้นสุดส่วนที่เพิ่ม ---
 
     if (password !== confirmPassword) {
       showMessage('รหัสผ่านไม่ตรงกัน', 'error');
@@ -940,7 +963,7 @@ function RegisterForm({ showMessage, supabase, setActiveTab }) {
         }
       } else if (authData.session === null && authData.user) {
         // ลงทะเบียนสำเร็จ แต่ต้องมีการยืนยันอีเมล (ยังไม่มี session)
-        showMessage('ลงทะเบียนสำเร็จ! โปรดตรวจสอบอีเมลของคุณเพื่อยืนยันการลงทะเบียน', 'success');
+        setPersistentMessage({ text: 'ลงทะเบียนสำเร็จ! โปรดตรวจสอบอีเมลของคุณเพื่อยืนยันการลงทะเบียน', type: 'info' });
         setActiveTab('login'); // เปลี่ยนไปหน้าล็อกอินเพื่อรอการยืนยันอีเมล
         // ล้างฟอร์ม
         setEmail(''); setPassword(''); setConfirmPassword(''); setPrefix('');
@@ -999,10 +1022,11 @@ function RegisterForm({ showMessage, supabase, setActiveTab }) {
         />
       </div>
       <div>
-        <label htmlFor="prefix" className="block text-sm font-medium text-gray-700 mb-1">คำนำหน้า</label>
+        <label htmlFor="prefix" className="block text-sm font-medium text-gray-700 mb-1">คำนำหน้า <span className="text-red-500">*</span>
+        </label>
         <select
           id="prefix" value={prefix} onChange={(e) => setPrefix(e.target.value)}
-          className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
+          required className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
         >
           <option value="">-- เลือกคำนำหน้า --</option>
           <option value="เด็กชาย">เด็กชาย</option>
@@ -1013,24 +1037,27 @@ function RegisterForm({ showMessage, supabase, setActiveTab }) {
         </select>
       </div>
       <div>
-        <label htmlFor="full-name" className="block text-sm font-medium text-gray-700 mb-1">ชื่อ - นามสกุล</label>
+        <label htmlFor="full-name" className="block text-sm font-medium text-gray-700 mb-1">ชื่อ - นามสกุล <span className="text-red-500">*</span>
+        </label>
         <input
           type="text" id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)}
-          className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500"
+          required className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
       <div>
-        <label htmlFor="phone-number" className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์</label>
+        <label htmlFor="phone-number" className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์ <span className="text-red-500">*</span>
+        </label>
         <input
           type="tel" id="phone-number" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)}
-          className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500"
+          required className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
       <div>
-        <label htmlFor="education-level" className="block text-sm font-medium text-gray-700 mb-1">ระดับชั้นที่ศึกษา</label>
+        <label htmlFor="education-level" className="block text-sm font-medium text-gray-700 mb-1">ระดับชั้นที่ศึกษา <span className="text-red-500">*</span>
+        </label>
         <select
           id="education-level" value={educationLevel} onChange={(e) => setEducationLevel(e.target.value)}
-          className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
+          required className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
         >
           <option value="">-- เลือกระดับชั้น --</option>
           <option value="ปวช.1">ปวช.1</option>
@@ -1042,23 +1069,25 @@ function RegisterForm({ showMessage, supabase, setActiveTab }) {
         </select>
       </div>
       
-      {departmentOptions.length > 0 && (
-        <div>
-          <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
-            แผนกวิชา/คณะ <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="department" value={department} onChange={(e) => setDepartment(e.target.value)}
-            required
-            className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
-            <option value="">-- เลือกแผนกวิชา/คณะ --</option>
-            {departmentOptions.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      <div>
+        <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+          แผนกวิชา/คณะ <span className="text-red-500">*</span>
+        </label>
+        <select
+          id="department" value={department} onChange={(e) => setDepartment(e.target.value)}
+          required
+          disabled={departmentOptions.length === 0} // <-- แก้ไข: ปิดการใช้งานเมื่อยังไม่มีตัวเลือก
+          className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white disabled:bg-gray-100" // <-- เพิ่ม: สไตล์เมื่อถูกปิด
+        >
+          {/* แก้ไข: เปลี่ยนข้อความตามสถานะ */}
+          <option value="">
+            {educationLevel ? '-- เลือกแผนกวิชา/คณะ --' : '-- กรุณาเลือกระดับชั้นก่อน --'}
+          </option>
+          {departmentOptions.map(opt => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+      </div>
 
       <div>
         <label htmlFor="student-id" className="block text-sm font-medium text-gray-700 mb-1">
@@ -1103,6 +1132,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [admin, setAdmin] = useState(null);
+  const [persistentMessage, setPersistentMessage] = useState(null); // <-- เพิ่มบรรทัดนี้
 
   const showMessage = useCallback((msg, type = 'info') => {
     setMessage({ text: msg, type });
@@ -1133,6 +1163,16 @@ export default function App() {
       setLoadingAuth(false);
     });
 
+    // --- เพิ่มโค้ดส่วนนี้เข้าไป ---
+  // ตรวจจับว่าผู้ใช้กลับมาจากการยืนยันอีเมลหรือไม่
+  if (window.location.hash === '#confirm') {
+    showMessage('ยืนยันอีเมลสำเร็จ! คุณสามารถเข้าสู่ระบบได้เลย', 'success');
+    setPersistentMessage(null); // ล้างข้อความที่ค้างไว้
+    // ลบ #confirm ออกจาก URL เพื่อความสวยงาม
+    window.history.replaceState(null, null, ' '); 
+  }
+  // --- สิ้นสุดส่วนที่เพิ่ม ---
+
     return () => {
       authListener.subscription.unsubscribe();
     };
@@ -1154,10 +1194,17 @@ export default function App() {
   const handleLogout = async () => {
     showMessage('กำลังออกจากระบบ...', 'info');
     const { error } = await supabase.auth.signOut();
-    if (error) {
-      showMessage(`เกิดข้อผิดพลาดในการออกจากระบบ: ${error.message}`, 'error');
+
+    // ไม่ว่า signOut จะสำเร็จหรือล้มเหลว เราจะบังคับให้ UI กลับไปหน้า login เสมอ
+    // เพื่อป้องกันไม่ให้ผู้ใช้ติดอยู่ในสถานะที่ผิดพลาด
+    if (error && error.message !== "Auth session missing!") {
+      // เราจะแสดงข้อความ Error เฉพาะเมื่อเป็น Error ที่ร้ายแรงจริงๆ
+      console.error("Logout Error:", error);
+      showMessage(`เกิดข้อผิดพลาด: ${error.message}`, 'error');
     } else {
-      showMessage('ออกจากระบบสำเร็จ!', 'success');
+      // ถ้าไม่มี Error หรือเป็นแค่ "Auth session missing" ให้ถือว่าออกจากระบบสำเร็จ
+      // และปล่อยให้ useEffect ที่ดักฟัง onAuthStateChange จัดการเปลี่ยนหน้าเอง
+      setUser(null);
       setActiveTab('login');
     }
   };
@@ -1248,6 +1295,19 @@ export default function App() {
                   )}
                 </nav>
                 <main className="p-6 sm:p-8 lg:p-10 bg-gray-50" key={activeTab}>
+                  {/* --- เพิ่มโค้ดแสดงข้อความค้างไว้ตรงนี้ --- */}
+                  {persistentMessage && (
+                    <div
+                      className={`p-4 mb-6 rounded-xl text-center font-medium transition-all duration-300 ${
+                        persistentMessage.type === 'success' ? 'bg-green-100 text-green-700'
+                        : persistentMessage.type === 'error' ? 'bg-red-100 text-red-700'
+                        : 'bg-indigo-100 text-indigo-700'
+                      }`}
+                    >
+                      {persistentMessage.text}
+                    </div>
+                  )}
+                  {/* --- สิ้นสุดส่วนที่เพิ่ม --- */}
                   {message && (
                     <div
                       className={`p-4 mb-6 rounded-xl text-center font-medium transition-all duration-300 ${
@@ -1263,7 +1323,7 @@ export default function App() {
                   )}
                   {!user ? (
                     activeTab === 'register' ? (
-                      <RegisterForm showMessage={showMessage} supabase={supabase} setActiveTab={setActiveTab} />
+                      <RegisterForm showMessage={showMessage} supabase={supabase} setActiveTab={setActiveTab} setPersistentMessage={setPersistentMessage} />
                     ) : (
                       <LoginForm showMessage={showMessage} supabase={supabase} setActiveTab={setActiveTab} />
                     )
