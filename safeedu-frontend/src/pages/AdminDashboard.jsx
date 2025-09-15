@@ -604,76 +604,71 @@ useEffect(() => {
     if (!editReport) return;
     setEditReportLoading(true);
     try {
-      const files = fileInputRef.current?.files || [];
+      // 1. จัดการไฟล์ที่อัปโหลดใหม่
+      const filesToUpload = fileInputRef.current?.files || [];
       let uploadedFiles = [];
-      if (files.length > 0) {
-        uploadedFiles = await handleUploadFiles(editReport.id, Array.from(files));
+      if (filesToUpload.length > 0) {
+        uploadedFiles = await handleUploadFiles(editReport.id, Array.from(filesToUpload));
       }
 
-      const existingNotes = Array.isArray(editReport.admin_notes)
-        ? editReport.admin_notes
-        : parseJsonSafe(editReport.admin_notes);
-      const newNotes = existingNotes.slice();
-      if (editReport.new_note_text && editReport.new_note_text.trim()) {
-        let author_id = null;
-        try {
-          const u = await supabase.auth.getUser();
-          author_id = u?.data?.user?.id || null;
-        } catch {
-          author_id = null;
-        }
+      // 2. จัดการ Note ที่เขียนใหม่
+      const existingNotes = Array.isArray(editReport.admin_notes) ? editReport.admin_notes : parseJsonSafe(editReport.admin_notes);
+      const newNotes = [...existingNotes];
+      if (editReport.new_note_text?.trim()) {
+        const { data: { user } } = await supabase.auth.getUser();
         newNotes.push({
           text: editReport.new_note_text.trim(),
-          author_id,
+          author_id: user?.id || null,
           created_at: new Date().toISOString(),
         });
       }
 
-      const existingFiles = Array.isArray(editReport.solution_files)
-        ? editReport.solution_files
-        : parseJsonSafe(editReport.solution_files);
-      const mergedFiles = existingFiles.concat(uploadedFiles);
+      // 3. รวมไฟล์เก่าและไฟล์ใหม่เข้าด้วยกัน
+      const existingFiles = Array.isArray(editReport.solution_files) ? editReport.solution_files : parseJsonSafe(editReport.solution_files);
+      const mergedFiles = [...existingFiles, ...uploadedFiles];
 
+      // 4. เตรียมข้อมูลที่จะส่งไป Supabase
       const payload = {
         status: editReport.status,
         admin_notes: JSON.stringify(newNotes),
         solution_files: JSON.stringify(mergedFiles),
       };
 
-      const { error: updateError } = await supabase
+      // 5. อัปเดตข้อมูลไปที่ Supabase และ "ขอข้อมูลที่อัปเดตแล้วกลับมาด้วย .select()"
+      const { data, error: updateError } = await supabase
         .from("reports")
         .update(payload)
-        .eq("id", editReport.id);
+        .eq("id", editReport.id)
+        .select(); // <-- เพิ่ม .select() เพื่อตรวจสอบผลลัพธ์
+
       if (updateError) throw updateError;
 
-      setReports((prev) =>
-        prev.map((r) =>
-          r.id === editReport.id
-            ? {
-                ...r,
-                ...payload,
-                admin_notes: newNotes,
-                solution_files: mergedFiles,
-              }
-            : r
-        )
-      );
+      // 6. "ตรวจสอบว่าการอัปเดตสำเร็จจริงหรือไม่" ถ้าไม่สำเร็จ ให้แจ้ง Error
+      if (!data || data.length === 0) {
+        throw new Error("การอัปเดตไม่สำเร็จ: ไม่พบข้อมูลให้แก้ไข หรืออาจติดสิทธิ์ Policy ของ Storage");
+      }
 
-      if (typeof showMessage === "function") showMessage("อัปเดตเรื่องร้องเรียนสำเร็จ", "success");
+      // 7. "อัปเดตข้อมูลบนหน้าเว็บด้วยตัวเอง" (วิธีนี้จะนุ่มนวลกว่า fetchAllData)
+      const updatedReports = reports.map((r) =>
+        r.id === editReport.id
+          ? {
+              ...r,
+              status: editReport.status,
+              admin_notes: newNotes,
+              solution_files: mergedFiles,
+            }
+          : r
+      );
+      setReports(updatedReports);
+      buildOverview(updatedReports, profiles);
+
+      showMessage("อัปเดตเรื่องร้องเรียนสำเร็จ", "success");
       setShowEditReportModal(false);
       setEditReport(null);
 
-      buildOverview(
-        reports.map((r) =>
-          r.id === editReport.id
-            ? { ...r, ...payload, admin_notes: newNotes, solution_files: mergedFiles }
-            : r
-        ),
-        profiles
-      );
     } catch (err) {
       console.error("save report edit error", err);
-      if (typeof showMessage === "function") showMessage(`ไม่สามารถอัปเดตได้: ${err.message}`, "error");
+      showMessage(`ไม่สามารถอัปเดตได้: ${err.message}`, "error");
     } finally {
       setEditReportLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = null;
@@ -688,18 +683,18 @@ useEffect(() => {
         const { error } = await supabase.from("reports").delete().eq("id", id);
         if (error) throw error;
         setReports((p) => p.filter((r) => r.id !== id));
-        if (typeof showMessage === "function") showMessage("ลบรายงานสำเร็จ", "success");
+        showMessage("ลบรายงานสำเร็จ", "success");
       } else if (type === "user") {
         const { error } = await supabase.from("profiles").delete().eq("id", id);
         if (error) throw error;
         setProfiles((p) => p.filter((u) => u.id !== id));
-        if (typeof showMessage === "function") showMessage("ลบผู้ใช้สำเร็จ", "success");
+        showMessage("ลบผู้ใช้สำเร็จ", "success");
       }
       setDeleteTarget(null);
       setShowDeleteModal(false);
     } catch (err) {
       console.error("delete error", err);
-      if (typeof showMessage === "function") showMessage(`ไม่สามารถลบได้: ${err.message}`, "error");
+      showMessage(`ไม่สามารถลบได้: ${err.message}`, "error");
     }
   };
 
@@ -830,38 +825,26 @@ useEffect(() => {
               <SummaryCard title="ปิด/แก้ไขแล้ว" value={(overviewData.perStatus["แก้ไขเรียบร้อย"] || 0) + (overviewData.perStatus["ปิดเรื่อง"] || 0)} subtitle="เรื่องที่เสร็จสิ้น" color="bg-green-400 text-white" icon="✔️" />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-              {/* single filter area for overview (user requested no duplicate filters) */}
-              <div className="bg-white p-4 rounded-2xl shadow-md">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+              
+              {/* Card 1: ตัวกรอง (ภาพรวม) - ใช้พื้นที่ 4 ส่วน */}
+              <div className="bg-white p-4 rounded-2xl shadow-md lg:col-span-4">
                 <h4 className="font-semibold mb-2">ตัวกรอง (ภาพรวม)</h4>
                 <div className="space-y-3">
                   <div>
                     <label className="text-sm text-gray-600">ประเภทปัญหา</label>
-                    {/* แก้ไข: เพิ่ม .sort() ที่นี่เพื่อให้ 'อื่นๆ' อยู่ท้าย */}
                     <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-full border px-3 py-2 rounded mt-1 bg-white">
                       <option value="all">ทั้งหมด</option>
-                      {Array.from(new Set(reports.map((r) => r.issue_type)))
-                        .filter(Boolean)
-                        .sort((a, b) => {
-                          if (a === "อื่นๆ") return 1;
-                          if (b === "อื่นๆ") return -1;
-                          return a.localeCompare(b);
-                        })
-                        .map((t) => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
+                      {Array.from(new Set(reports.map((r) => r.issue_type))).filter(Boolean).sort((a, b) => { if (a === "อื่นๆ") return 1; if (b === "อื่นๆ") return -1; return a.localeCompare(b); }).map((t) => (<option key={t} value={t}>{t}</option>))}
                     </select>
                   </div>
-
                   <div>
                     <label className="text-sm text-gray-600">ชั้นปี</label>
-                    {/* แก้ไข: นำ .sort() ออก และแก้ value/onChange ให้ถูกต้อง */}
                     <select value={eduFilter} onChange={(e) => setEduFilter(e.target.value)} className="w-full border px-3 py-2 rounded mt-1 bg-white">
                       <option value="all">ทั้งหมด</option>
                       {EDUCATION_LEVELS_OVERVIEW.map((e) => <option key={e} value={e}>{e}</option>)}
                     </select>
                   </div>
-
                   <div>
                     <label className="text-sm text-gray-600">ช่วงเวลา</label>
                     <select value={dateMode} onChange={(e) => setDateMode(e.target.value)} className="w-full border px-3 py-2 rounded mt-1 bg-white">
@@ -872,84 +855,36 @@ useEffect(() => {
                       <option value="year">ปีนี้</option>
                       <option value="range">ช่วงที่กำหนด</option>
                     </select>
-                    {dateMode === "range" && (
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        <input type="date" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} className="border px-3 py-2 rounded" />
-                        <input type="date" value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} className="border px-3 py-2 rounded" />
-                      </div>
-                    )}
+                    {dateMode === "range" && (<div className="mt-2 grid grid-cols-2 gap-2"><input type="date" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} className="border px-3 py-2 rounded" /><input type="date" value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} className="border px-3 py-2 rounded" /></div>)}
                   </div>
                 </div>
               </div>
 
-              {/* pie chart */}
-              <div className="bg-white p-4 rounded-2xl shadow-md">
+              {/* Card 2: กราฟวงกลม - ใช้พื้นที่ 5 ส่วน (กว้างขึ้น) */}
+              <div className="bg-white p-4 rounded-2xl shadow-md lg:col-span-5">
                 <h4 className="font-semibold mb-2">แยกตามประเภทปัญหา</h4>
-                <div style={{ width: "100%", height: 300 }}>
+                {/* แก้ไข: เพิ่ม paddingBottom เพื่อสร้างช่องว่างด้านล่าง */}
+                <div style={{ width: "100%", height: 350, paddingBottom: '20px' }}>
                   <ResponsiveContainer>
                     <PieChart>
-                      <Pie
-                        data={computePieData()}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={100}
-                        label={(entry) => `${entry.percent}%`}
-                      >
-                        {computePieData().map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
+                      <Pie data={computePieData()} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={100} label={(entry) => `${entry.percent}%`}>
+                        {computePieData().map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
                       </Pie>
-                      <ReTooltip formatter={(value) => {
-                        const total = overviewData.total || 1;
-                        const percent = Math.round((value / total) * 10000) / 100;
-                        return [`${value} รายการ`, `${percent}%`];
-                      }} />
-                      <Legend verticalAlign="bottom" height={36} />
+                      <ReTooltip formatter={(value) => { const total = overviewData.total || 1; const percent = Math.round((value / total) * 10000) / 100; return [`${value} รายการ`, `${percent}%`]; }} />
+                      <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '13px' }} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
               </div>
-              
-              {/* vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv */}
-              {/* --- นี่คือส่วนของการ์ด "ผู้ใช้" ที่ถูกแก้ไขแล้ว --- */}
-              {/* vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv */}
-              <div className="bg-white p-4 rounded-2xl shadow-md">
+
+              {/* Card 3: สรุปข้อมูลผู้ใช้ - ใช้พื้นที่ 3 ส่วน (แคบลง) */}
+              <div className="bg-white p-4 rounded-2xl shadow-md lg:col-span-3">
                 <h4 className="font-semibold mb-2 text-gray-800">สรุปข้อมูลผู้ใช้</h4>
-                <div className="pb-3 border-b">
-                  <div className="text-xl font-bold text-blue-600">{profiles.length}</div>
-                  <div className="text-sm text-gray-500">สมาชิกทั้งหมด</div>
-                </div>
-                <div className="mt-3 space-y-2">
-                  <h5 className="text-sm font-semibold text-gray-600">แบ่งตามประเภท:</h5>
-                  <ul className="text-sm text-gray-700 space-y-1 pl-2">
-                    
-                    {/* แสดงจำนวน Admin */}
-                    <li className="flex justify-between">
-                      <span>ผู้ดูแลระบบ (Admin)</span>
-                      <span className="font-semibold bg-purple-100 text-purple-800 px-2 rounded-full">{userBreakdown.admins} คน</span>
-                    </li>
-
-                    {/* แสดงจำนวนผู้ใช้ตามระดับชั้น */}
-                    {Object.entries(userBreakdown.byLevel)
-                      .sort(([levelA], [levelB]) => levelA.localeCompare(levelB)) // จัดเรียงตามตัวอักษร
-                      .map(([level, count]) => (
-                        <li key={level} className="flex justify-between">
-                          <span>{level}</span>
-                          <span className="font-semibold bg-blue-100 text-blue-800 px-2 rounded-full">{count} คน</span>
-                        </li>
-                    ))}
-                  </ul>
-                </div>
+                <div className="pb-3 border-b"><div className="text-xl font-bold text-blue-600">{profiles.length}</div><div className="text-sm text-gray-500">สมาชิกทั้งหมด</div></div>
+                <div className="mt-3 space-y-2"><h5 className="text-sm font-semibold text-gray-600">แบ่งตามประเภท:</h5><ul className="text-sm text-gray-700 space-y-1 pl-2"><li className="flex justify-between"><span>ผู้ดูแลระบบ (Admin)</span><span className="font-semibold bg-purple-100 text-purple-800 px-2 rounded-full">{userBreakdown.admins} คน</span></li>{Object.entries(userBreakdown.byLevel).sort(([levelA], [levelB]) => levelA.localeCompare(levelB)).map(([level, count]) => (<li key={level} className="flex justify-between"><span>{level}</span><span className="font-semibold bg-blue-100 text-blue-800 px-2 rounded-full">{count} คน</span></li>))}</ul></div>
               </div>
-              {/* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ */}
-              {/* --- สิ้นสุดส่วนที่แก้ไข --- */}
-              {/* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ */}
-
             </div>
-
-            {/* details under pie */}
+            
             <div className="bg-white p-4 rounded-2xl shadow-md">
               <h4 className="font-semibold mb-2">คำอธิบาย (สรุปเชิงตัวเลข)</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -967,7 +902,6 @@ useEffect(() => {
                     ))}
                   </ul>
                 </div>
-
                 <div>
                   <h5 className="font-semibold">สัดส่วนตามชั้นปี</h5>
                   <ul className="mt-2 space-y-2">
@@ -1214,7 +1148,11 @@ useEffect(() => {
             <div className="space-y-3">
               <div>
                 <label className="text-sm text-gray-600">สถานะ</label>
-                <select className="w-full border px-3 py-2 rounded" value={editReport.status} onChange={(e) => setEditReport((p) => ({ ...p, status: e.target.value }))}>
+                <select
+                  className="w-full border px-3 py-2 rounded"
+                  value={editReport.status}
+                  onChange={(e) => setEditReport((prev) => ({ ...prev, status: e.target.value }))}
+                >
                   <option value="รับเรื่องแล้ว">รับเรื่องแล้ว</option>
                   <option value="กำลังดำเนินการ">กำลังดำเนินการ</option>
                   <option value="แก้ไขเรียบร้อย">แก้ไขเรียบร้อย</option>

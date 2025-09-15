@@ -1284,7 +1284,7 @@ export default function App() {
         />
         <Route path="/reset-password" element={<ResetPassword supabase={supabase} />} />
         <Route path="/admin-login" element={<AdminLogin supabase={supabase} setAdmin={setAdmin} />} />
-        <Route path="/admin-dashboard" element={<ProtectedAdminRoute><AdminDashboard supabase={supabase} /></ProtectedAdminRoute>} />
+        <Route path="/admin-dashboard" element={<ProtectedAdminRoute><AdminDashboard supabase={supabase} showMessage={showMessage} setAdmin={setAdmin} /></ProtectedAdminRoute>} />
         <Route path="*" element={<h1 style={{ textAlign: 'center' }}>404 - Page Not Found</h1>} />
       </Routes>
     </Router>
